@@ -18,8 +18,8 @@
             const string MsgUserElection = "Elige una posición del tablero (el tablero de la derecha indica la posición para cada número): ";
             const string MsgWrongLetter = "Te has equivocado al escribir la ficha. Vuelve a intentarlo: ";
             const string MsgWrongPosition = "Te has equivocado de posición. Vuelve a intentarlo: ";
-            const string MsgUserWon = "¡Has ganado al ordenador!";
-            const string MsgComputerWon = "Has perdido contra el ordenador.";
+            const string MsgUserWon = "¡Has ganado!";
+            const string MsgComputerWon = "Has perdido.";
             const string MsgNobodyWon = "Has empatado contra el ordenador";
             const int boardRows = 3, boardColumns = 3;
 
@@ -44,7 +44,8 @@
                 {4, 5, 6},
                 {7, 8, 9},
             };
-            int userPosition, remainingSpaces = 9;
+
+            int userPosition, remainingSpaces = boardRows * boardColumns;
 
             // Bienvenida al juego
             Console.WriteLine(MsgWelcome);
@@ -65,8 +66,6 @@
                 secondExecution = true;
 
             } while (!UserTokenVerification(userToken));
-
-            secondExecution = false;
 
             if (userToken == "X")
             {
@@ -97,11 +96,22 @@
             Console.WriteLine(MsgExplanationBoard);
             Console.WriteLine();
 
+            // En caso de que el jugador sea segundo, el ordenador juega el primer turno.
+            if (!userFirstPlayer)
+            {
+                ComputerTurn(ref gameBoard, computerToken, rnd);
+                ShowBoards(gameBoard, helpBoard);
+            }
+
             // Bucle principal del juego
             do
             {
-                ShowBoards(gameBoard, helpBoard);
-                Console.WriteLine();
+                if (userFirstPlayer)
+                {
+                    ShowBoards(gameBoard, helpBoard);
+                    Console.WriteLine();
+                }
+                userFirstPlayer = true;
                 secondExecution = false;
 
                 do
@@ -121,6 +131,11 @@
                 UpdateBoard(ref gameBoard, userPosition, userToken, computerToken);
 
                 remainingSpaces--;
+
+                if (remainingSpaces > 0)
+                {
+                    ComputerTurn(ref gameBoard, computerToken, rnd);
+                }
 
             } while ((CheckVictoryUser(gameBoard, userToken) && CheckVictoryComputer(gameBoard, computerToken)) && remainingSpaces > 0);
 
@@ -222,8 +237,8 @@
 
         public static bool CheckForUpdateBoard(ref string[,] gameBoard, int userElection, string userToken, string computerToken)
         {
-            int row = (userElection - 1) / 3;
-            int col = (userElection - 1) % 3;
+            int row = (userElection - 1) / gameBoard.GetLength(1);
+            int col = (userElection - 1) % gameBoard.GetLength(1);
 
             if (gameBoard[row, col] == "*")
             {
@@ -237,15 +252,65 @@
 
         public static void UpdateBoard(ref string[,] gameBoard, int userElection, string userToken, string computerToken)
         {
-            int row = (userElection - 1) / 3;
-            int col = (userElection - 1) % 3;
+            int row = (userElection - 1) / gameBoard.GetLength(1);
+            int col = (userElection - 1) % gameBoard.GetLength(1);
 
             gameBoard[row, col] = userToken;
         }
 
+        public static int[] UpdateAvailablePositions(string[,] gameBoard)
+        {
+            int freePositions = 0;
+
+            for (int i = 0; i < gameBoard.GetLength(0); i++)
+            {
+                for (int j = 0; j < gameBoard.GetLength(1); j++)
+                {
+                    if (gameBoard[i, j] == "*")
+                    {
+                        freePositions++;
+                    }
+                }
+            }
+
+            int[] availablePositions = new int[freePositions];
+            int currentIndex = 0;
+
+            for (int i = 0; i < gameBoard.GetLength(0); i++)
+            {
+                for (int j = 0; j < gameBoard.GetLength(1); j++)
+                {
+                    if (gameBoard[i, j] == "*")
+                    {
+                        int position = i * gameBoard.GetLength(1) + j;
+                        availablePositions[currentIndex] = position;
+                        currentIndex++;
+                    }
+                }
+            }
+
+            return availablePositions;
+        }
+
+        public static void ComputerTurn(ref string[,] boardGame, string computerToken, Random rnd)
+        {
+            int[] avPositions = UpdateAvailablePositions(boardGame);
+
+            if (avPositions.Length > 0)
+            {
+                int computerPositionIndex = rnd.Next(0, avPositions.Length);
+                int computerPosition = avPositions[computerPositionIndex];
+
+                int row = avPositions[computerPositionIndex] / boardGame.GetLength(1);
+                int col = avPositions[computerPositionIndex] % boardGame.GetLength(1);
+
+                boardGame[row, col] = computerToken;
+            }
+        }
+
         public static bool CheckVictoryUser(string[,] board, string userToken)
         {
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < board.GetLength(0); i++)
             {
                 // Verificar filas
                 if (board[i, 0] == userToken && board[i, 1] == userToken && board[i, 2] == userToken)
@@ -269,20 +334,20 @@
 
         public static bool CheckVictoryComputer(string[,] board, string computerToken)
         {
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < board.GetLength(0); i++)
             {
                 // Verificar filas
-                if (board[i, 0] == computerToken && board[i, 1] == computerToken && board[i, 0] == computerToken)
+                if (board[i, 0] == computerToken && board[i, 1] == computerToken && board[i, 2] == computerToken)
                     return false;
 
                 // Verificar columnas
-                if (board[0, i] == computerToken && board[1, i] == computerToken && board[0, i] == computerToken)
+                if (board[0, i] == computerToken && board[1, i] == computerToken && board[2, i] == computerToken)
                     return false;
             }
 
             // Verificar diagonales
-            if ((board[0, 0] == computerToken && board[1, 1] == computerToken && board[0, 0] == computerToken) ||
-                (board[0, 2] == computerToken && board[1, 1] == computerToken && board[0, 2] == computerToken))
+            if ((board[0, 0] == computerToken && board[1, 1] == computerToken && board[2, 2] == computerToken) ||
+                (board[0, 2] == computerToken && board[1, 1] == computerToken && board[2, 0] == computerToken))
             {
                 return false;
             }
