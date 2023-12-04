@@ -1,10 +1,4 @@
-﻿/*
- * 
-*/
-
-using System.Reflection.Metadata.Ecma335;
-
-namespace TicTacToe
+﻿namespace TicTacToe
 {
     class Program
     {
@@ -24,17 +18,20 @@ namespace TicTacToe
             const string MsgUserElection = "Elige una posición del tablero (el tablero de la derecha indica la posición para cada número): ";
             const string MsgWrongLetter = "Te has equivocado al escribir la ficha. Vuelve a intentarlo: ";
             const string MsgWrongPosition = "Te has equivocado de posición. Vuelve a intentarlo: ";
+            const string MsgUserWon = "¡Has ganado al ordenador!";
+            const string MsgComputerWon = "Has perdido contra el ordenador.";
+            const string MsgNobodyWon = "Has empatado contra el ordenador";
             const int boardRows = 3, boardColumns = 3;
 
             // Variables
             string userToken, computerToken;
 
             Random rnd = new Random();
-            
-            // Decidir el primer jugador al azar
-            bool userFirstPlayer = rnd.Next(0,2) == 0 ? true : false, secondExecution = false;
 
-            string[,] gameBoard = new string[boardRows, boardColumns] 
+            // Decidir el primer jugador al azar
+            bool userFirstPlayer = rnd.Next(0, 2) == 0 ? true : false, secondExecution = false;
+
+            string[,] gameBoard = new string[boardRows, boardColumns]
             {
                 {"*", "*", "*"},
                 {"*", "*", "*"},
@@ -55,7 +52,7 @@ namespace TicTacToe
 
             // Elegir que ficha quiere ser el jugador
             do
-            {   
+            {
                 if (secondExecution)
                 {
                     Console.WriteLine(MsgWrongLetter);
@@ -125,7 +122,25 @@ namespace TicTacToe
 
                 remainingSpaces--;
 
-            } while ((CheckVictoryUser(gameBoard, userToken) || CheckVictoryComputer(gameBoard, computerToken)) && remainingSpaces > 0);
+            } while ((CheckVictoryUser(gameBoard, userToken) && CheckVictoryComputer(gameBoard, computerToken)) && remainingSpaces > 0);
+
+            // Ha ganado el jugador o el ordenador, o bien ha habido empate y no hay más espacio para colocar fichas
+            Console.Clear();
+
+            ShowBoard(gameBoard);
+
+            if (!CheckVictoryUser(gameBoard, userToken))
+            {
+                Console.WriteLine(MsgUserWon);
+            }
+            else if (!CheckVictoryComputer(gameBoard, computerToken))
+            {
+                Console.WriteLine(MsgComputerWon);
+            }
+            else
+            {
+                Console.WriteLine(MsgNobodyWon);
+            }
         }
 
         public static bool UserTokenVerification(string token)
@@ -137,6 +152,32 @@ namespace TicTacToe
             else
             {
                 return false;
+            }
+        }
+
+        public static void ShowBoard(string[,] boardGame)
+        {
+            for (int i = 0; i < boardGame.GetLength(0); i++)
+            {
+                // Mostrar tablero de juego
+                for (int j = 0; j < boardGame.GetLength(1); j++)
+                {
+                    Console.Write(boardGame[i, j]);
+
+                    if (j < boardGame.GetLength(1) - 1)
+                    {
+                        Console.Write(" | ");
+                    }
+                }
+
+                if (i < boardGame.GetLength(0) - 1)
+                {
+                    Console.WriteLine("\n- + - + -");
+                }
+                else
+                {
+                    Console.WriteLine();
+                }
             }
         }
 
@@ -184,7 +225,7 @@ namespace TicTacToe
             int row = (userElection - 1) / 3;
             int col = (userElection - 1) % 3;
 
-            if (gameBoard[row, col] != userToken || gameBoard[row, col] != computerToken)
+            if (gameBoard[row, col] == "*")
             {
                 return false;
             }
