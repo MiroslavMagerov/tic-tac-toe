@@ -1,4 +1,5 @@
-﻿namespace TicTacToe
+﻿
+namespace TicTacToe
 {
     class Program
     {
@@ -21,21 +22,22 @@
             const string MsgUserWon = "¡Has ganado!";
             const string MsgComputerWon = "Has perdido.";
             const string MsgNobodyWon = "Has empatado contra el ordenador";
+            const string EmptyBoardSpace = " ";
             const int boardRows = 3, boardColumns = 3;
 
             // Variables
             string userToken, computerToken;
 
-            Random rnd = new Random();
+            Random rnd = new();
 
             // Decidir el primer jugador al azar
             bool userFirstPlayer = rnd.Next(0, 2) == 0 ? true : false, secondExecution = false;
 
             string[,] gameBoard = new string[boardRows, boardColumns]
             {
-                {"*", "*", "*"},
-                {"*", "*", "*"},
-                {"*", "*", "*"},
+                {EmptyBoardSpace, EmptyBoardSpace, EmptyBoardSpace},
+                {EmptyBoardSpace, EmptyBoardSpace, EmptyBoardSpace},
+                {EmptyBoardSpace, EmptyBoardSpace, EmptyBoardSpace},
             };
 
             int[,] helpBoard =
@@ -45,11 +47,14 @@
                 {7, 8, 9},
             };
 
+            int[] winnerPositions = new int[3];
+
             int userPosition, remainingSpaces = boardRows * boardColumns;
 
             // Bienvenida al juego
             Console.WriteLine(MsgWelcome);
             Console.WriteLine(MsgRandomPlayer);
+            Console.WriteLine();
 
             // Elegir que ficha quiere ser el jugador
             do
@@ -60,12 +65,16 @@
                 }
 
                 Console.WriteLine(MsgAskToken);
+                Console.WriteLine();
                 Console.Write(MsgGetToken);
-                userToken = Console.ReadLine().ToUpper();
+                userToken = Console.ReadLine() ?? " ";
+                userToken = userToken.ToUpper();
 
                 secondExecution = true;
 
             } while (!UserTokenVerification(userToken));
+
+            Console.WriteLine();
 
             if (userToken == "X")
             {
@@ -99,7 +108,7 @@
             // En caso de que el jugador sea segundo, el ordenador juega el primer turno.
             if (!userFirstPlayer)
             {
-                ComputerTurn(ref gameBoard, computerToken, rnd);
+                ComputerTurn(ref gameBoard, computerToken, rnd, EmptyBoardSpace);
                 ShowBoards(gameBoard, helpBoard);
             }
 
@@ -126,29 +135,34 @@
 
                     secondExecution = true;
 
-                } while (CheckForUpdateBoard(ref gameBoard, userPosition, userToken, computerToken));
+                } while (CheckForUpdateBoard(ref gameBoard, userPosition, userToken, computerToken, EmptyBoardSpace));
 
                 UpdateBoard(ref gameBoard, userPosition, userToken, computerToken);
 
                 remainingSpaces--;
 
-                if (remainingSpaces > 0)
+                if (remainingSpaces > 0 && (CheckVictoryUser(gameBoard, userToken, ref winnerPositions)))
                 {
-                    ComputerTurn(ref gameBoard, computerToken, rnd);
+                    ComputerTurn(ref gameBoard, computerToken, rnd, EmptyBoardSpace);
                 }
 
-            } while ((CheckVictoryUser(gameBoard, userToken) && CheckVictoryComputer(gameBoard, computerToken)) && remainingSpaces > 0);
+            } while ((CheckVictoryUser(gameBoard, userToken, ref winnerPositions) &&
+            CheckVictoryComputer(gameBoard, computerToken, ref winnerPositions)) && remainingSpaces > 0);
 
             // Ha ganado el jugador o el ordenador, o bien ha habido empate y no hay más espacio para colocar fichas
             Console.Clear();
 
-            ShowBoard(gameBoard);
+            Console.WriteLine(winnerPositions[0]);
+            Console.WriteLine(winnerPositions[1]);
+            Console.WriteLine(winnerPositions[2]);
 
-            if (!CheckVictoryUser(gameBoard, userToken))
+            ShowBoardColorizedWinner(gameBoard, !CheckVictoryUser(gameBoard, userToken, ref winnerPositions), winnerPositions);
+
+            if (!CheckVictoryUser(gameBoard, userToken, ref winnerPositions))
             {
                 Console.WriteLine(MsgUserWon);
             }
-            else if (!CheckVictoryComputer(gameBoard, computerToken))
+            else if (!CheckVictoryComputer(gameBoard, computerToken, ref winnerPositions))
             {
                 Console.WriteLine(MsgComputerWon);
             }
@@ -235,12 +249,12 @@
             }
         }
 
-        public static bool CheckForUpdateBoard(ref string[,] gameBoard, int userElection, string userToken, string computerToken)
+        public static bool CheckForUpdateBoard(ref string[,] gameBoard, int userElection, string userToken, string computerToken, string emptySpace)
         {
             int row = (userElection - 1) / gameBoard.GetLength(1);
             int col = (userElection - 1) % gameBoard.GetLength(1);
 
-            if (gameBoard[row, col] == "*")
+            if (gameBoard[row, col] == emptySpace)
             {
                 return false;
             }
@@ -258,7 +272,7 @@
             gameBoard[row, col] = userToken;
         }
 
-        public static int[] UpdateAvailablePositions(string[,] gameBoard)
+        public static int[] UpdateAvailablePositions(string[,] gameBoard, string emptySpace)
         {
             int freePositions = 0;
 
@@ -266,7 +280,7 @@
             {
                 for (int j = 0; j < gameBoard.GetLength(1); j++)
                 {
-                    if (gameBoard[i, j] == "*")
+                    if (gameBoard[i, j] == emptySpace)
                     {
                         freePositions++;
                     }
@@ -280,7 +294,7 @@
             {
                 for (int j = 0; j < gameBoard.GetLength(1); j++)
                 {
-                    if (gameBoard[i, j] == "*")
+                    if (gameBoard[i, j] == emptySpace)
                     {
                         int position = i * gameBoard.GetLength(1) + j;
                         availablePositions[currentIndex] = position;
@@ -292,9 +306,9 @@
             return availablePositions;
         }
 
-        public static void ComputerTurn(ref string[,] boardGame, string computerToken, Random rnd)
+        public static void ComputerTurn(ref string[,] boardGame, string computerToken, Random rnd, string emptySpace)
         {
-            int[] avPositions = UpdateAvailablePositions(boardGame);
+            int[] avPositions = UpdateAvailablePositions(boardGame, emptySpace);
 
             if (avPositions.Length > 0)
             {
@@ -308,52 +322,135 @@
             }
         }
 
-        public static bool CheckVictoryUser(string[,] board, string userToken)
+        public static bool CheckVictoryUser(string[,] board, string userToken, ref int[] victoryPositions)
         {
+            // Verificar diagonales
+            if (board[0, 0] == userToken && board[1, 1] == userToken && board[2, 2] == userToken)
+            {
+                victoryPositions[0] = 1;
+                victoryPositions[1] = 5;
+                victoryPositions[2] = 9;
+                return false;
+            }
+
+            else if (board[0, 2] == userToken && board[1, 1] == userToken && board[2, 0] == userToken)
+            {
+                victoryPositions[0] = 3;
+                victoryPositions[1] = 5;
+                victoryPositions[2] = 7;
+                return false;
+            }
+
             for (int i = 0; i < board.GetLength(0); i++)
             {
                 // Verificar filas
                 if (board[i, 0] == userToken && board[i, 1] == userToken && board[i, 2] == userToken)
+                {
+                    victoryPositions[0] = i * 3 + 1;
+                    victoryPositions[1] = i * 3 + 2;
+                    victoryPositions[2] = i * 3 + 3;
                     return false;
+                }
 
                 // Verificar columnas
-                if (board[0, i] == userToken && board[1, i] == userToken && board[2, i] == userToken)
+                else if (board[0, i] == userToken && board[1, i] == userToken && board[2, i] == userToken)
+                {
+                    victoryPositions[0] = i + 1;
+                    victoryPositions[1] = i + 4;
+                    victoryPositions[2] = i + 7;
                     return false;
-            }
-
-            // Verificar diagonales
-            if ((board[0, 0] == userToken && board[1, 1] == userToken && board[2, 2] == userToken) ||
-                (board[0, 2] == userToken && board[1, 1] == userToken && board[2, 0] == userToken))
-            {
-                return false;
+                }
             }
 
             // No hay victoria
             return true;
         }
 
-        public static bool CheckVictoryComputer(string[,] board, string computerToken)
+        public static bool CheckVictoryComputer(string[,] board, string computerToken, ref int[] victoryPositions)
         {
+            // Verificar diagonales
+            if (board[0, 0] == computerToken && board[1, 1] == computerToken && board[2, 2] == computerToken)
+            {
+                victoryPositions[0] = 1;
+                victoryPositions[1] = 5;
+                victoryPositions[2] = 9;
+                return false;
+            }
+
+            else if (board[0, 2] == computerToken && board[1, 1] == computerToken && board[2, 0] == computerToken)
+            {
+                victoryPositions[0] = 3;
+                victoryPositions[1] = 5;
+                victoryPositions[2] = 7;
+                return false;
+            }
+
             for (int i = 0; i < board.GetLength(0); i++)
             {
                 // Verificar filas
                 if (board[i, 0] == computerToken && board[i, 1] == computerToken && board[i, 2] == computerToken)
+                {
+                    victoryPositions[0] = i * 3 + 1;
+                    victoryPositions[1] = i * 3 + 2;
+                    victoryPositions[2] = i * 3 + 3;
                     return false;
+                }
 
                 // Verificar columnas
-                if (board[0, i] == computerToken && board[1, i] == computerToken && board[2, i] == computerToken)
+                else if (board[0, i] == computerToken && board[1, i] == computerToken && board[2, i] == computerToken)
+                {
+                    victoryPositions[0] = i * 3 + 1;
+                    victoryPositions[1] = i * 3 + 4;
+                    victoryPositions[2] = i * 3 + 7;
                     return false;
-            }
-
-            // Verificar diagonales
-            if ((board[0, 0] == computerToken && board[1, 1] == computerToken && board[2, 2] == computerToken) ||
-                (board[0, 2] == computerToken && board[1, 1] == computerToken && board[2, 0] == computerToken))
-            {
-                return false;
+                }
             }
 
             // No hay victoria
             return true;
+        }
+
+        public static void ShowBoardColorizedWinner(string[,] boardGame, bool userVictory, int[] victoryPositions)
+        {
+            for (int i = 0; i < boardGame.GetLength(0); i++)
+            {
+                // Mostrar tablero de juego
+                for (int j = 0; j < boardGame.GetLength(1); j++)
+                {
+                    int position = victoryPositions[i] - 1;
+                    int row = position / 3;
+                    int col = position % 3;
+
+                    if (col == i && row == j)
+                    {
+                        if (userVictory)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Green;
+                        }
+                        else
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                        }
+                    }
+                    Console.Write(boardGame[i, j]);
+
+                    Console.ResetColor();
+
+                    if (j < boardGame.GetLength(1) - 1)
+                    {
+                        Console.Write(" | ");
+                    }
+                }
+
+                if (i < boardGame.GetLength(0) - 1)
+                {
+                    Console.WriteLine("\n- + - + -");
+                }
+                else
+                {
+                    Console.WriteLine();
+                }
+            }
         }
     }
 }
